@@ -8,6 +8,16 @@ let allClients = [];
 let allTransactions = [];
 let clientRefreshInterval = null;
 
+function setSafeText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+if (clientRefreshInterval) {
+    clearInterval(clientRefreshInterval);
+    clientRefreshInterval = null;
+}
+
 const dataService = {
   async getPlanoDeContas() {
     try {
@@ -314,35 +324,55 @@ const uiService = {
     setSafeText('clientEmergencyFund', formatarReal(despesas * 3));
 },
 
-  async populateTransactionForm() {
-    try {
-      const planoDeContas = await dataService.getPlanoDeContas();
-      const select = document.getElementById('transCategory');
-      select.innerHTML = '<option value="">Selecione uma categoria...</option>';
-      const grupos = planoDeContas.reduce((acc, item) => {
-        const grupo = item.macro_grupo;
-        if (!acc[grupo]) acc[grupo] = [];
-        acc[grupo].push(item);
-        return acc;
-      }, {});
-      for (const grupo in grupos) {
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = `--- ${grupo} ---`;
-        grupos[grupo].forEach(item => {
-          const option = document.createElement('option');
-          option.value = item.id;
-          option.textContent = item.nome;
-          option.dataset.tipo = item.tipo;
-          option.dataset.necessidade = item.necessidade || 'estilo_de_vida';
-          option.dataset.recorrencia = item.recorrencia || 'variavel';
-          optgroup.appendChild(option);
-        });
-        select.appendChild(optgroup);
-      }
-    } catch (error) {
-      console.error(error.message);
+ async populateTransactionForm() {
+    // 1. Verificação de existência (Onde o seu código morre se não houver o select)
+    const select = document.getElementById('transCategory');
+    if (!select) {
+        // Se o elemento não existe na tela atual, saímos silenciosamente
+        return; 
     }
-  },
+
+    try {
+        // 2. Busca de dados
+        const planoDeContas = await dataService.getPlanoDeContas();
+        
+        // 3. Reset do Select com opção padrão
+        select.innerHTML = '<option value="">Selecione uma categoria...</option>';
+
+        // 4. Agrupamento inteligente (Business Logic)
+        const grupos = planoDeContas.reduce((acc, item) => {
+            const grupo = item.macro_grupo || 'Outros';
+            if (!acc[grupo]) acc[grupo] = [];
+            acc[grupo].push(item);
+            return acc;
+        }, {});
+
+        // 5. Renderização otimizada
+        for (const grupo in grupos) {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = `--- ${grupo} ---`;
+
+            grupos[grupo].forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.nome;
+                
+                // Atributos de dados essenciais para o handleAddTransaction
+                option.dataset.tipo = item.tipo;
+                option.dataset.necessidade = item.necessidade || 'estilo_de_vida';
+                option.dataset.recorrencia = item.recorrencia || 'variavel';
+                
+                optgroup.appendChild(option);
+            });
+            
+            select.appendChild(optgroup);
+        }
+
+    } catch (error) {
+        // 6. Log de erro profissional (Não use alert aqui para não travar a UI)
+        console.error("Erro ao popular o formulário de transações:", error.message);
+    }
+},
 
   async renderClientMetas(metas) {
     const list = document.getElementById('clientMetasList');
