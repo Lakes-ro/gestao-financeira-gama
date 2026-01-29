@@ -795,6 +795,32 @@ async function deleteMeta(metaId) {
   }
 }
 
+// Função de Proteção Global
+function safeUpdateText(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.textContent = value;
+    }
+}
+
+function updateClientResume(transactions) {
+    const survival = biService.calculateCustoDeSobrevivencia(transactions);
+    const lifestyle = biService.calculateCustoDeLifestyle(transactions);
+    const passiveIncome = biService.calculateRendaPassivaTotal(transactions);
+    const expenses = survival + lifestyle;
+
+    // Use a função segura em VEZ de document.getElementById(...).textContent
+    safeUpdateText('biSurvivalCost', formatarReal(survival));
+    safeUpdateText('biLifestyleCost', formatarReal(lifestyle));
+    safeUpdateText('biPassiveIncome', formatarReal(passiveIncome));
+    safeUpdateText('totalDespesas', formatarReal(expenses));
+    
+    // Proteção para cálculos de porcentagem
+    if (expenses > 0) {
+        safeUpdateText('biSurvivalPercent', ((survival / expenses) * 100).toFixed(1) + '%');
+    }
+}
+
 async function populateAdminMetaClientSelect() {
   const select = document.getElementById('adminMetaClientSelect');
   select.innerHTML = '<option value="">Selecione um cliente</option>';
