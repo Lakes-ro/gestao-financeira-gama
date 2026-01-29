@@ -279,14 +279,10 @@ const uiService = {
     }).join('');
   },
 
-  updateClientResume(transactions) {
+ updateClientResume(transactions) {
     const receitas = transactions.filter(t => t.tipo === 'receita').reduce((sum, t) => sum + parseFloat(t.valor || 0), 0);
     const despesas = transactions.filter(t => t.tipo === 'despesa').reduce((sum, t) => sum + parseFloat(t.valor || 0), 0);
     const saldo = receitas - despesas;
-
-    document.getElementById('totalReceitas').textContent = formatarReal(receitas);
-    document.getElementById('totalDespesas').textContent = formatarReal(despesas);
-    document.getElementById('saldo').textContent = formatarReal(saldo);
 
     const survival = biService.calculateCustoDeSobrevivencia(transactions);
     const lifestyle = biService.calculateCustoDeLifestyle(transactions);
@@ -294,19 +290,29 @@ const uiService = {
     const totalExpense = survival + lifestyle;
     const coverage = biService.calculateCoberturaRendaPassiva(passiveIncome, survival);
 
-    document.getElementById('biSurvivalCost').textContent = formatarReal(survival);
-    document.getElementById('biLifestyleCost').textContent = formatarReal(lifestyle);
-    document.getElementById('biPassiveIncome').textContent = formatarReal(passiveIncome);
-    document.getElementById('biPassiveCoverage').textContent = coverage.toFixed(1) + '%';
+    // FUNÇÃO DE BLINDAGEM (Safe Update)
+    const setSafeText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
+
+    // Atualiza apenas o que existir no DOM atual
+    setSafeText('totalReceitas', formatarReal(receitas));
+    setSafeText('totalDespesas', formatarReal(despesas));
+    setSafeText('saldo', formatarReal(saldo));
+    setSafeText('biSurvivalCost', formatarReal(survival));
+    setSafeText('biLifestyleCost', formatarReal(lifestyle));
+    setSafeText('biPassiveIncome', formatarReal(passiveIncome));
+    setSafeText('biPassiveCoverage', coverage.toFixed(1) + '%');
 
     if (totalExpense > 0) {
-      document.getElementById('biSurvivalPercent').textContent = ((survival / totalExpense) * 100).toFixed(1) + '%';
-      document.getElementById('biLifestylePercent').textContent = ((lifestyle / totalExpense) * 100).toFixed(1) + '%';
+        setSafeText('biSurvivalPercent', ((survival / totalExpense) * 100).toFixed(1) + '%');
+        setSafeText('biLifestylePercent', ((lifestyle / totalExpense) * 100).toFixed(1) + '%');
     }
 
-    document.getElementById('clientPlanningBalanceText').textContent = formatarReal(saldo);
-    document.getElementById('clientEmergencyFund').textContent = formatarReal(despesas * 3);
-  },
+    setSafeText('clientPlanningBalanceText', formatarReal(saldo));
+    setSafeText('clientEmergencyFund', formatarReal(despesas * 3));
+},
 
   async populateTransactionForm() {
     try {
@@ -556,6 +562,39 @@ async function deleteClient(clientId) {
     console.error('Erro completo:', error);
     alert('❌ Erro ao deletar cliente: ' + error.message);
   }
+}
+
+function navigateClientView(viewName, event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+
+    // O SEGREDO: O botão envia 'dashboard', mas o ID é 'dashboardView'
+    const targetId = viewName.endsWith('View') ? viewName : viewName + 'View';
+    const targetView = document.getElementById(targetId);
+
+    if (!targetView) {
+        console.error("Engenharia: ID não encontrado ->", targetId);
+        return;
+    }
+
+    // 1. Esconde todas as seções do cliente com força total
+    document.querySelectorAll('#clientScreen .view-section').forEach(section => {
+        section.style.display = 'none';
+        section.classList.remove('active');
+    });
+
+    // 2. Remove o destaque dos botões
+    document.querySelectorAll('#clientScreen .sidebar__nav-item').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // 3. Mostra a seção correta
+    targetView.style.display = 'block';
+    targetView.classList.add('active');
+
+    // 4. Ativa o botão que foi clicado
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    }
 }
 
 async function openEditClientModal(clientId) {
