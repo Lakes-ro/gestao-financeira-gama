@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor Financeiro Pro - Admin</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+<div class="app-container">
+    <div id="loginAdminScreen" class="screen screen--centered active">
+        <div class="login-box">
+            <h1 class="login-box__title">💰 Gestor Financeiro</h1>
+            <p class="login-box__subtitle">Acesso de Administrador</p>
+            <form onsubmit="adminLogin(event)">
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="adminEmail" placeholder="seu@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha:</label>
+                    <input type="password" id="adminPassword" placeholder="Digite sua senha" required>
+                </div>
+                <button type="submit" class="btn btn--primary">Entrar como Admin</button>
+            </form>
+            <p class="login-box__toggle-text">Não tem conta? <a href="#" onclick="uiService.showScreen('registerAdminScreen'); return false;">Criar conta</a></p>
+            <div id="adminLoginError" class="message message--error"></div>
+        </div>
+    </div>
+
+    <div id="registerAdminScreen" class="screen screen--centered">
+        <div class="login-box">
+            <h1 class="login-box__title">Criar Conta</h1>
+            <p class="login-box__subtitle">Gerencie seus clientes</p>
+            <form onsubmit="adminRegister(event)">
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="adminRegEmail" placeholder="seu@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha:</label>
+                    <input type="password" id="adminRegPassword" placeholder="Mínimo 6 caracteres" required>
+                </div>
+                <button type="submit" class="btn btn--primary">Criar Conta</button>
+            </form>
+            <p class="login-box__toggle-text">Já tem conta? <a href="#" onclick="uiService.showScreen('loginAdminScreen'); return false;">Fazer login</a></p>
+            <div id="adminRegisterError" class="message message--error"></div>
+        </div>
+    </div>
+
+    <div id="adminScreen" class="screen layout-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar__header"><h2>👨‍💼 Admin</h2></div>
+            <nav class="sidebar__nav">
+                <button class="sidebar__nav-item active" onclick="navigateAdminTo('dashboardView', event)">📋 Clientes</button>
+                <button class="sidebar__nav-item" onclick="navigateAdminTo('dashboardsView', event)">📊 Dashboards</button>
+                <button class="sidebar__nav-item" onclick="navigateAdminTo('metasView', event)">🎯 Metas</button>
+                <button class="sidebar__nav-item" onclick="navigateAdminTo('planningView', event)">📋 Planejamentos</button>
+                <button class="sidebar__nav-item" onclick="navigateAdminTo('transactionsView', event)">💸 Razonete</button>
+            </nav>
+            <div class="sidebar__footer">
+                <button class="sidebar__profile" onclick="showAdminProfile()">👤 Perfil</button>
+                <button onclick="logoutAdmin()" class="btn btn--logout-small">Sair</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="client-header">
+                <h1>👨‍💼 Painel do Administrador</h1>
+                <p id="adminGreeting"></p>
+            </header>
+
+            <section id="dashboardView" class="view-section active">
+                <div class="section-header">
+                    <h2>📋 Meus Clientes</h2>
+                    <button onclick="uiService.toggle('addClientForm')" class="btn btn--secondary">+ Adicionar Cliente</button>
+                </div>
+                <div id="addClientForm" class="card hidden">
+                    <h3>Novo Cliente</h3>
+                    <form onsubmit="handleAddClient(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nome:</label>
+                                <input type="text" id="clientName" placeholder="Nome do cliente" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Email:</label>
+                                <input type="email" id="adminClientEmail" placeholder="Email (opcional)">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn--primary">Criar Cliente</button>
+                    </form>
+                    <div id="clientError" class="message message--error"></div>
+                    <div id="clientSuccess" class="message message--success"></div>
+                </div>
+                <div id="clientsList" class="clients-grid"><p class="empty-state">Nenhum cliente adicionado</p></div>
+            </section>
+
+            <section id="dashboardsView" class="view-section">
+                <div class="section-header"><h2>📊 Dashboards dos Clientes</h2></div>
+                <div id="dashboardsList" class="clients-grid"><p class="empty-state">Nenhum cliente disponível</p></div>
+            </section>
+
+            <section id="metasView" class="view-section">
+                <div class="section-header">
+                    <h2>🎯 Metas dos Clientes</h2>
+                    <button onclick="uiService.toggle('addAdminMetaForm')" class="btn btn--secondary">+ Adicionar Meta</button>
+                </div>
+                <div id="addAdminMetaForm" class="card hidden">
+                    <h3>Nova Meta</h3>
+                    <form onsubmit="handleAddAdminMeta(event)">
+                        <div class="form-group">
+                            <label>Cliente:</label>
+                            <select id="adminMetaClientSelect" required>
+                                <option value="">Selecione um cliente</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nome da Meta:</label>
+                                <input type="text" id="adminMetaName" placeholder="Ex: Comprar notebook" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Valor (R$):</label>
+                                <input type="number" id="adminMetaValue" placeholder="0,00" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Prazo (meses):</label>
+                            <input type="number" id="adminMetaPrazo" placeholder="6" min="1" required>
+                        </div>
+                        <button type="submit" class="btn btn--primary">Criar Meta</button>
+                    </form>
+                    <div id="adminMetaError" class="message message--error"></div>
+                    <div id="adminMetaSuccess" class="message message--success"></div>
+                </div>
+                <div id="adminMetasList" class="metas-admin-grid"><p class="empty-state">Nenhuma meta criada</p></div>
+            </section>
+
+            <section id="planningView" class="view-section">
+                <div class="section-header">
+                    <h2>📊 Planejamentos</h2>
+                    <button onclick="openPlanningBuilder()" class="btn btn--secondary">+ Criar Planejamento</button>
+                </div>
+                <div id="adminPlanningsList" class="planning-requests-grid"><p class="empty-state">Nenhum planejamento criado</p></div>
+            </section>
+
+            <section id="transactionsView" class="view-section">
+                <h2>💸 Razonete Consolidado</h2>
+                <div class="card">
+                    <button class="btn-collapse" onclick="toggleCollapse('razoneteAdmin')">📂 Visualizar Transações <span class="collapse-icon">▼</span></button>
+                    <div id="razoneteAdmin" class="collapse-content hidden">
+                        <div class="filters">
+                            <div class="form-group"><label>Cliente:</label>
+                                <select id="adminClientFilter" onchange="applyAdminFilters()">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label>Tipo:</label>
+                                <select id="adminTypeFilter" onchange="applyAdminFilters()">
+                                    <option value="">Todos</option>
+                                    <option value="receita">Receita</option>
+                                    <option value="despesa">Despesa</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="adminTransactionsList" class="transactions-list"><p class="empty-state">Nenhuma transação encontrada</p></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="adminProfileModal" class="modal hidden">
+        <div class="modal__content">
+            <header class="modal__header">
+                <h2>👤 Meu Perfil</h2>
+                <button onclick="uiService.closeModal('adminProfileModal')" class="modal__close-btn">✕</button>
+            </header>
+            <div class="modal__body">
+                <div style="background: rgba(100, 150, 255, 0.1); padding: 20px; border-radius: 8px;">
+                    <p style="color: #a0a0b0; font-size: 12px; margin-bottom: 8px;">Email</p>
+                    <p id="profileAdminEmail" style="color: #6495ff; font-size: 16px; font-weight: 700;"></p>
+                </div>
+                <button onclick="logoutAdmin()" class="btn btn--logout" style="width: 100%; margin-top: 20px;">Sair</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editClientModal" class="modal hidden">
+        <div class="modal__content">
+            <header class="modal__header">
+                <h2>✏️ Editar Cliente</h2>
+                <button onclick="uiService.closeModal('editClientModal')" class="modal__close-btn">✕</button>
+            </header>
+            <div class="modal__body">
+                <form id="editClientForm" onsubmit="handleEditClient(event)">
+                    <div class="form-group">
+                        <label>Nome:</label>
+                        <input type="text" id="editClientNameInput" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" id="editClientEmailInput">
+                    </div>
+                    <button type="submit" class="btn btn--primary">Salvar</button>
+                </form>
+                <div id="editClientError" class="message message--error"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mentorCommentsModal" class="modal hidden">
+        <div class="modal__content">
+            <header class="modal__header">
+                <h2>💬 Comentários - <span id="mentorClientName"></span></h2>
+                <button onclick="uiService.closeModal('mentorCommentsModal')" class="modal__close-btn">✕</button>
+            </header>
+            <div class="modal__body">
+                <form id="mentorCommentsForm" onsubmit="handleSaveMentorComments(event)">
+                    <div class="form-group">
+                        <label>Diagnóstico/Comentários:</label>
+                        <textarea id="mentorCommentsText" rows="8" style="resize: vertical;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn--primary">Salvar</button>
+                </form>
+                <div id="mentorCommentsError" class="message message--error"></div>
+                <div id="mentorCommentsSuccess" class="message message--success"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="editMetaModal" class="modal hidden">
+        <div class="modal__content">
+            <header class="modal__header">
+                <h2>✏️ <span id="metaEditName"></span></h2>
+                <button onclick="uiService.closeModal('editMetaModal')" class="modal__close-btn">✕</button>
+            </header>
+            <div class="modal__body">
+                <div style="background: rgba(100, 150, 255, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <p style="color: #a0a0b0; font-size: 12px; margin-bottom: 5px;">Meta</p>
+                            <p id="metaEditGoal" style="color: #6495ff; font-weight: 700;">R$ 0,00</p>
+                        </div>
+                        <div>
+                            <p style="color: #a0a0b0; font-size: 12px; margin-bottom: 5px;">Economizado</p>
+                            <p id="metaEditCurrent" style="color: #64ff7a; font-weight: 700;">R$ 0,00</p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <div style="height: 8px; background: rgba(100, 150, 255, 0.2); border-radius: 4px; overflow: hidden;">
+                            <div id="metaEditProgressBar" style="height: 100%; background: #6495ff; width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                </div>
+                <form id="editMetaForm" onsubmit="handleEditMeta(event)">
+                    <div class="form-group">
+                        <label>Adicionar Valor (R$):</label>
+                        <input type="number" id="editMetaAddValue" placeholder="0,00" step="0.01" min="0" required>
+                    </div>
+                    <button type="submit" class="btn btn--primary">Registrar</button>
+                </form>
+                <div id="editMetaError" class="message message--error"></div>
+                <div id="editMetaSuccess" class="message message--success"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="planningBuilderModal" class="modal hidden">
+        <div class="modal__content">
+            <header class="modal__header">
+                <h2>📊 Criar Planejamento - <span id="planningClientName"></span></h2>
+                <button onclick="uiService.closeModal('planningBuilderModal')" class="modal__close-btn">✕</button>
+            </header>
+            <div class="modal__body">
+                <div style="background: rgba(100, 150, 255, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div><p style="color: #a0a0b0; font-size: 11px;">Renda Ativa</p><p id="planningActiveIncome" style="color: #fff; font-weight: 700;">R$ 0,00</p></div>
+                        <div><p style="color: #a0a0b0; font-size: 11px;">Renda Passiva</p><p id="planningPassiveIncome" style="color: #64ff7a; font-weight: 700;">R$ 0,00</p></div>
+                        <div><p style="color: #a0a0b0; font-size: 11px;">Renda Total</p><p id="planningTotalIncome" style="color: #6495ff; font-weight: 700;">R$ 0,00</p></div>
+                        <div><p style="color: #a0a0b0; font-size: 11px;">Despesa Total</p><p id="planningTotalExpense" style="color: #ff6464; font-weight: 700;">R$ 0,00</p></div>
+                    </div>
+                </div>
+                <form onsubmit="savePlanningForClient(event)">
+                    <div class="form-group">
+                        <label>Título do Planejamento:</label>
+                        <input type="text" id="planningBuilderTitle" placeholder="Ex: Planejamento Trimestral" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Recomendações:</label>
+                        <textarea id="planningRecommendations" rows="6" style="resize: vertical;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Detalhes Adicionais:</label>
+                        <textarea id="planningDetails" rows="6" style="resize: vertical;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn--primary">Salvar Planejamento</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboardModal" class="modal hidden">
+        <div class="modal__content" style="max-width: 1200px;">
+            <header class="modal__header">
+                <h2>📊 Dashboard: <span id="dashboardModalClientName"></span></h2>
+                <button onclick="uiService.closeModal('dashboardModal')" class="modal__close-btn">✕</button>
+            </header>
+            <div class="modal__body">
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px;">
+                    <div style="background: rgba(100, 150, 255, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #ff6464;">
+                        <p style="color: #a0a0b0; font-size: 12px; margin-bottom: 10px;">💰 Custo de Sobrevivência</p>
+                        <p id="dashModalSurvival" style="color: #ff6464; font-size: 24px; font-weight: 800;">R$ 0,00</p>
+                    </div>
+                    <div style="background: rgba(100, 150, 255, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #ffd700;">
+                        <p style="color: #a0a0b0; font-size: 12px; margin-bottom: 10px;">🎯 Estilo de Vida</p>
+                        <p id="dashModalLifestyle" style="color: #ffd700; font-size: 24px; font-weight: 800;">R$ 0,00</p>
+                    </div>
+                    <div style="background: rgba(100, 150, 255, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #64ff7a;">
+                        <p style="color: #a0a0b0; font-size: 12px; margin-bottom: 10px;">📈 Renda Passiva</p>
+                        <p id="dashModalPassive" style="color: #64ff7a; font-size: 24px; font-weight: 800;">R$ 0,00</p>
+                    </div>
+                    <div style="background: rgba(100, 150, 255, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #6495ff;">
+                        <p style="color: #a0a0b0; font-size: 12px; margin-bottom: 10px;">🛡️ Cobertura</p>
+                        <p id="dashModalCoverage" style="color: #6495ff; font-size: 24px; font-weight: 800;">0%</p>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                    <div style="background: rgba(100, 150, 255, 0.1); padding: 20px; border-radius: 10px;">
+                        <p style="color: #fff; font-size: 16px; font-weight: 700; margin-bottom: 20px;">📊 Essencial vs. Estilo de Vida</p>
+                        <canvas id="dashModalPieChart" style="max-height: 300px;"></canvas>
+                    </div>
+                    <div style="background: rgba(100, 150, 255, 0.1); padding: 20px; border-radius: 10px;">
+                        <p style="color: #fff; font-size: 16px; font-weight: 700; margin-bottom: 20px;">💳 Top Categorias de Despesa</p>
+                        <canvas id="dashModalBarChart" style="max-height: 300px;"></canvas>
+                    </div>
+                </div>
+                <div style="margin-top: 40px;">
+                    <h3 style="color: #fff; margin-bottom: 20px;">📊 ANÁLISE DETALHADA</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                        <div style="background: rgba(100, 150, 255, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #64ff7a;">
+                            <p style="color: #a0a0b0; font-size: 12px; margin-bottom: 10px;">🟢 Renda Ativa</p>
+                            <p id="dashAnalyticActiveIncome" style="color: #64ff7a; font-size: 24px; font-weight: 800;">R$ 0,00</p>
+                        </div>
+                        <div style="background: rgba(100, 150, 255, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #6495ff;">
+                            <p style="color: #a0a0b0; font-size: 12px; margin-bottom: 10px;">💰 Renda Passiva</p>
+                            <p id="dashAnalyticPassiveIncome" style="color: #6495ff; font-size: 24px; font-weight: 800;">R$ 0,00</p>
+                        </div>
+                        <div style="background: rgba(100, 150, 255, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #ffd700;">
+                            <p style="color: #a0a0b0; font-size: 12px; margin-bottom: 10px;">📈 Total de Renda</p>
+                            <p id="dashAnalyticTotalIncome" style="color: #ffd700; font-size: 24px; font-weight: 800;">R$ 0,00</p>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
+                        <div style="background: rgba(100, 150, 255, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #ff9500;">
+                            <p style="color: #a0a0b0; font-size: 12px; margin-bottom: 10px;">📌 Despesas Fixas</p>
+                            <p id="dashAnalyticFixedExpenses" style="color: #ff9500; font-size: 24px; font-weight: 800;">R$ 0,00</p>
+                        </div>
+                        <div style="background: rgba(100, 150, 255, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #ff6464;">
+                            <p style="color: #a0a0b0; font-size: 12px; margin-bottom: 10px;">📊 Despesas Variáveis</p>
+                            <p id="dashAnalyticVariableExpenses" style="color: #ff6464; font-size: 24px; font-weight: 800;">R$ 0,00</p>
+                        </div>
+                        <div style="background: rgba(100, 150, 255, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #64ff7a;">
+                            <p style="color: #a0a0b0; font-size: 12px; margin-bottom: 10px;">✅ Saldo Mensal</p>
+                            <p id="dashAnalyticMonthlyBalance" style="color: #64ff7a; font-size: 24px; font-weight: 800;">R$ 0,00</p>
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 40px;">
+                    <h3 style="color: #fff; margin-bottom: 20px;">🎯 STATUS DAS METAS</h3>
+                    <div style="background: rgba(100, 150, 255, 0.1); border: 1px solid rgba(100, 150, 255, 0.3); border-radius: 10px; padding: 20px;">
+                        <p style="color: #6495ff; font-size: 16px; margin-bottom: 15px;">Total de Metas: <span id="dashMetasTotal" style="color: #ffd700; font-weight: 800;">0</span></p>
+                        <p style="color: #64ff7a; font-size: 16px; margin-bottom: 15px;">Valor Total Economizado: <span id="dashMetasSaved" style="color: #64ff7a; font-weight: 800;">R$ 0,00</span></p>
+                        <p style="color: #ffd700; font-size: 16px; margin-bottom: 15px;">Valor Total em Metas: <span id="dashMetasTarget" style="color: #ffd700; font-weight: 800;">R$ 0,00</span></p>
+                        <p style="color: #6495ff; font-size: 16px;">Progresso Médio: <span id="dashMetasProgress" style="color: #64ff7a; font-weight: 800;">0,0%</span></p>
+                    </div>
+                </div>
+                <div style="margin-top: 40px;">
+                    <h3 style="color: #fff; margin-bottom: 20px;">✅ RECOMENDAÇÕES</h3>
+                    <div id="dashRecommendations" style="background: rgba(100, 255, 122, 0.1); border: 1px solid rgba(100, 255, 122, 0.3); border-radius: 10px; padding: 20px; color: #64ff7a; font-size: 14px; line-height: 1.8;">
+                        <p>Carregando recomendações...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
