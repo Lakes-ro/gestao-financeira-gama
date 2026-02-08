@@ -3,8 +3,6 @@ const SUPABASE_URL = 'https://xnakjicfoybdfjwrsaui.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuYWtqaWNmb3liZGZqd3JzYXVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1MDEwMDMsImV4cCI6MjA4NjA3NzAwM30.yYJ0i8XlV9yEZQFgLk6dKi3RAZwxCJqjW7qgw4KSx1o';
 
 // Inicialização Global
-let supabaseClient = null;
-
 if (window.supabase) {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     console.log('✅ Supabase conectado');
@@ -396,21 +394,40 @@ const uiService = {
       return `<div class="meta-card"><div class="meta-header"><div class="meta-nome">${m.nome}</div></div><div class="meta-progress-bar"><div class="meta-progress-fill" style="width: ${Math.min(p, 100)}%"></div></div><div class="meta-info"><div class="meta-info-item"><div class="meta-info-label">Economizado</div><div class="meta-info-value">${formatarReal(m.valor_economizado)}</div></div><div class="meta-info-item"><div class="meta-info-label">Necessário</div><div class="meta-info-value">${formatarReal(m.valor_necessario)}</div></div><div class="meta-info-item"><div class="meta-info-label">Progresso</div><div class="meta-info-value">${p.toFixed(1)}%</div></div></div><div style="display: flex; gap: 8px; margin-top: 15px;"><button onclick="openEditMetaModal('${m.id}', false)" class="btn--secondary" style="flex: 1;">➕ Registrar</button><button onclick="deleteMeta('${m.id}')" class="btn-delete" style="flex: 1;">Deletar</button></div></div>`;
     }).join('');
   }
-};async function init() {
-  try {
-    if (!window.supabase) throw new Error('Supabase não carregou.');
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('✅ Supabase conectado');
+
+};
+
+async function initClient() {
+    console.log("🚀 Motor do Cliente Iniciado");
+    
     const urlParams = new URLSearchParams(window.location.search);
     const clientId = urlParams.get('cliente');
-    if (clientId) {
-      await loadClientPage(clientId);
-    } else {
-      await checkAdminAuth();
+    
+    if (!clientId) {
+        console.error("Nenhum ID de cliente na URL");
+        return;
     }
-  } catch (error) {
-    console.error('Erro na inicialização:', error);
-  }
+
+    try {
+        const { data: client, error } = await supabaseClient
+            .from('clientes')
+            .select('*')
+            .eq('id', clientId)
+            .single();
+
+        if (error || !client) throw new Error("Cliente não encontrado");
+
+        currentClient = client;
+        
+        // Atualiza UI
+        setSafeText('clientNameHeader', client.nome);
+        
+        // Se você tiver a lógica de carregar transações, chame-a aqui
+        console.log("Cliente carregado:", client.nome);
+        
+    } catch (err) {
+        console.error("Erro no initClient:", err.message);
+    }
 }
 
 async function checkAdminAuth() {
@@ -1268,5 +1285,4 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
-
 
