@@ -1,5 +1,16 @@
+// config.js
 const SUPABASE_URL = 'https://xnakjicfoybdfjwrsaui.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuYWtqaWNmb3liZGZqd3JzYXVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1MDEwMDMsImV4cCI6MjA4NjA3NzAwM30.yYJ0i8XlV9yEZQFgLk6dKi3RAZwxCJqjW7qgw4KSx1o';
+
+// Inicialização Global
+let supabaseClient = null;
+
+if (window.supabase) {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✅ Supabase conectado');
+} else {
+    console.error('❌ SDK do Supabase não encontrado.');
+}
 
 let supabaseClient = null;
 let currentAdmin = null;
@@ -1257,4 +1268,5 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
+
 
