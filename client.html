@@ -259,6 +259,17 @@
     </div>
 </div>
 
+<script>
+    // Usamos o evento load para garantir que o script.js foi totalmente processado
+    window.addEventListener('load', () => {
+        if (typeof initClient === 'function') {
+            initClient();
+        } else {
+            console.error("Crítico: A função initClient não foi definida no script.js");
+        }
+    });
+</script>
+
 <script src="script.js"></script>
 </body>
 </html>
