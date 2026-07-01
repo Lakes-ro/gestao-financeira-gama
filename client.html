@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor Financeiro Pro</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body>
+
+<div class="app-container">
+
+    <!-- ============================================================
+         TELA: LOGIN ÚNICO
+    ============================================================ -->
+    <div id="loginScreen" class="screen screen--centered active">
+        <div class="login-box">
+            <h1 class="login-box__title">💰 Gestor Financeiro</h1>
+            <p class="login-box__subtitle">Plataforma de Inteligência Financeira</p>
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" placeholder="seu@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" id="loginPassword" placeholder="Digite sua senha" required>
+                </div>
+                <button type="submit" class="btn btn--primary">Entrar</button>
+            </form>
+            <div id="loginError" class="login-error hidden"></div>
+            <p class="login-box__toggle-text">
+                Não tem conta?
+                <a href="#" onclick="toggleScreen('registerScreen'); return false;">Criar conta</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         TELA: CADASTRO
+    ============================================================ -->
+    <div id="registerScreen" class="screen screen--centered">
+        <div class="login-box" style="max-width:460px;">
+            <h1 class="login-box__title">💰 Criar Conta</h1>
+            <p class="login-box__subtitle">Crie o seu acesso gratuito</p>
+            <form onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>Nome Completo</label>
+                    <input type="text" id="registerNome" placeholder="Ex: Vinícius Viana" required>
+                </div>
+                <div class="form-group">
+                    <label>Como quer ser chamado? (Apelido)</label>
+                    <input type="text" id="registerApelido" placeholder="Ex: Vini" required>
+                </div>
+                <div class="form-group">
+                    <label>Data de Nascimento</label>
+                    <input type="date" id="registerNascimento" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="registerEmail" placeholder="seu@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" id="registerPassword" placeholder="Mínimo 6 caracteres" required>
+                </div>
+                <div class="form-group">
+                    <label>Confirmar Senha</label>
+                    <input type="password" id="registerPasswordConfirm" placeholder="Repita a senha" required>
+                </div>
+                <button type="submit" class="btn btn--primary">Criar Conta</button>
+                <div id="registerError" class="login-error hidden" style="margin-top:12px;"></div>
+            </form>
+            <p class="login-box__toggle-text">
+                Já tem conta?
+                <a href="#" onclick="toggleScreen('loginScreen'); return false;">Fazer login</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         TELA: ONBOARDING (primeiro acesso — fallback)
+    ============================================================ -->
+    <div id="onboardingScreen" class="screen screen--centered">
+        <div class="login-box" style="max-width:480px;">
+            <h1 class="login-box__title">👋 Bem-vindo!</h1>
+            <p class="login-box__subtitle">Só falta completar o teu perfil para começar</p>
+            <form onsubmit="handleOnboarding(event)">
+                <div class="form-group">
+                    <label>Nome Completo</label>
+                    <input type="text" id="onboardingNome" placeholder="Ex: Roger Hugo Santos" required>
+                </div>
+                <div class="form-group">
+                    <label>Como quer ser chamado? (Apelido)</label>
+                    <input type="text" id="onboardingApelido" placeholder="Ex: Roger" required>
+                </div>
+                <div class="form-group">
+                    <label>Data de Nascimento</label>
+                    <input type="date" id="onboardingNascimento" required>
+                </div>
+                <button type="submit" class="btn btn--primary" style="margin-top:8px;">Continuar →</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         TELA: PAINEL ADMIN
+    ============================================================ -->
+    <div id="adminScreen" class="screen layout-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar__header">
+                <h2>👨‍💼 Admin</h2>
+            </div>
+            <nav class="sidebar__nav">
+                <button class="sidebar__nav-item active"
+                    onclick="switchAdminView('admin-clients', event)">📋 Clientes</button>
+                <button class="sidebar__nav-item"
+                    onclick="switchAdminView('admin-dashboards', event)">📊 Dashboards</button>
+                <button class="sidebar__nav-item"
+                    onclick="switchAdminView('admin-metas', event)">🎯 Metas</button>
+                <button class="sidebar__nav-item"
+                    onclick="switchAdminView('admin-planning', event)">📋 Planejamentos</button>
+                <button class="sidebar__nav-item"
+                    onclick="switchAdminView('admin-transactions', event)">💸 Razonete</button>
+            </nav>
+
+            <!-- BLOCO CLASSIFICAÇÃO DE RISCO -->
+            <div class="sidebar__risk-block">
+                <div class="sidebar__block-title">⚠️ Classificação de Risco</div>
+                <div class="risk-row risk-row--verde">
+                    <span class="risk-bar"></span>
+                    <span class="risk-label">Verde</span>
+                    <span class="risk-count" id="riskVerde">0</span>
+                </div>
+                <div class="risk-row risk-row--amarelo">
+                    <span class="risk-bar"></span>
+                    <span class="risk-label">Amarelo</span>
+                    <span class="risk-count" id="riskAmarelo">0</span>
+                </div>
+                <div class="risk-row risk-row--vermelho">
+                    <span class="risk-bar"></span>
+                    <span class="risk-label">Vermelho</span>
+                    <span class="risk-count" id="riskVermelho">0</span>
+                </div>
+                <div class="risk-subtitle">Nível de Criticidade</div>
+            </div>
+
+            <!-- BLOCO PLANEJAMENTO FINANCEIRO -->
+            <div class="sidebar__plan-block">
+                <div class="sidebar__block-title">📊 Planejamento Financeiro</div>
+                <div class="plan-stat">
+                    <span class="plan-stat__label">Metas Globais Ativas</span>
+                    <span class="plan-stat__value" id="planMetasAtivas">0</span>
+                </div>
+                <div class="plan-stat">
+                    <span class="plan-stat__label">Recomendações Pendentes</span>
+                    <span class="plan-stat__value" id="planRecPendentes">0</span>
+                </div>
+            </div>
+
+            <div class="sidebar__footer">
+                <button class="sidebar__profile" onclick="showAdminProfile()">👤 Perfil</button>
+                <button onclick="handleLogout()" class="btn btn--logout-small">Sair</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="admin-main-header">
+                <div>
+                    <h1>👨‍💼 Painel do Administrador</h1>
+                    <p class="admin-header-sub">Gerenciando <span id="adminClientCount">0</span> cliente(s) e seus planos</p>
+                </div>
+            </header>
+
+            <!-- CLIENTES -->
+            <section id="admin-clients" class="view-section active">
+                <div class="section-header">
+                    <h2>📋 Meus Clientes</h2>
+                    <button onclick="toggleAddClientForm()" class="btn btn--secondary">+ Adicionar Cliente</button>
+                </div>
+
+                <div id="addClientForm" class="card hidden">
+                    <h3>Novo Cliente</h3>
+                    <form onsubmit="handleAddClient(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nome</label>
+                                <input type="text" id="clientName" placeholder="Nome do cliente" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" id="adminClientEmail" placeholder="email@cliente.com" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn--primary">Criar Cliente</button>
+                    </form>
+                </div>
+
+                <div id="clientsList" class="clients-grid">
+                    <p class="empty-state">Nenhum cliente adicionado</p>
+                </div>
+            </section>
+
+            <!-- DASHBOARDS -->
+            <section id="admin-dashboards" class="view-section">
+                <h2>📊 Dashboards dos Clientes</h2>
+                <div id="dashboardsList" class="clients-grid">
+                    <p class="empty-state">Nenhum cliente disponível</p>
+                </div>
+            </section>
+
+            <!-- METAS -->
+            <section id="admin-metas" class="view-section">
+                <div class="section-header">
+                    <h2>🎯 Metas dos Clientes</h2>
+                    <button onclick="toggleAddMetaForm()" class="btn btn--secondary">+ Adicionar Meta</button>
+                </div>
+
+                <div id="addMetaForm" class="card hidden">
+                    <h3>Nova Meta</h3>
+                    <form onsubmit="handleAddAdminMeta(event)">
+                        <div class="form-group">
+                            <label>Cliente</label>
+                            <select id="adminMetaClientSelect" required>
+                                <option value="">Selecione um cliente</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nome da Meta</label>
+                                <input type="text" id="adminMetaName" placeholder="Ex: Fundo de Emergência" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Valor Alvo (R$)</label>
+                                <input type="number" id="adminMetaValue" placeholder="0,00" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn--primary">Criar Meta</button>
+                    </form>
+                </div>
+
+                <div id="adminMetasList" class="metas-admin-grid">
+                    <p class="empty-state">Nenhuma meta adicionada</p>
+                </div>
+            </section>
+
+            <!-- PLANEJAMENTOS -->
+            <section id="admin-planning" class="view-section">
+                <h2>📋 Planejamentos</h2>
+
+                <div class="card" style="margin-bottom: 20px;">
+                    <h3>Selecione um cliente</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="planningSelectClient" style="flex: 1;">
+                            <option value="">Escolha um cliente</option>
+                        </select>
+                        <button type="button" class="btn btn--secondary" onclick="loadPlanningForClient()">Carregar</button>
+                    </div>
+                </div>
+
+                <div id="planningForm" class="card hidden">
+                    <h3>Criar Planejamento</h3>
+                    <form onsubmit="handleAddPlanning(event)">
+                        <input type="hidden" id="planningClientId">
+                        <div class="form-group">
+                            <label>Título</label>
+                            <input type="text" id="planningBuilderTitle" placeholder="Ex: Planejamento Trimestral" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Recomendações</label>
+                            <textarea id="planningRecommendations" rows="5" style="resize: vertical;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Detalhes Adicionais</label>
+                            <textarea id="planningDetails" rows="5" style="resize: vertical;"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn--primary">Salvar Planejamento</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- RAZONETE -->
+            <section id="admin-transactions" class="view-section">
+                <h2>💸 Razonete Consolidado</h2>
+
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Cliente</label>
+                            <select id="razoneteClientFilter" onchange="loadAdminTransactions()">
+                                <option value="">Todos os clientes</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo</label>
+                            <select id="razoneteTypeFilter" onchange="loadAdminTransactions()">
+                                <option value="">Todos os tipos</option>
+                                <option value="receita">Receita</option>
+                                <option value="despesa">Despesa</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="transactionsList" class="transactions-list">
+                    <p class="empty-state">Nenhuma transação registada</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ============================================================
+         TELA: PAINEL CLIENTE
+    ============================================================ -->
+    <div id="clientScreen" class="screen layout-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar__header">
+                <h2>📊 Menu</h2>
+            </div>
+            <nav class="sidebar__nav">
+                <button class="sidebar__nav-item active"
+                    onclick="switchClientView('cli-dashboard', event)">📈 Dashboard</button>
+                <button class="sidebar__nav-item"
+                    onclick="switchClientView('cli-transactions', event)">💳 Transações</button>
+                <button class="sidebar__nav-item"
+                    onclick="switchClientView('cli-goals', event)">🎯 Metas</button>
+                <button class="sidebar__nav-item"
+                    onclick="switchClientView('cli-planning', event)">📋 Planejamento</button>
+            </nav>
+            <div class="sidebar__footer">
+                <button class="sidebar__profile" onclick="showClientProfile()">👤 Perfil</button>
+                <button onclick="handleLogout()" class="btn btn--logout-small">Sair</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="client-header">
+                <h1>👋 Bem-vindo, <span id="clientNameDisplay"></span></h1>
+                <p>Organize a sua vida financeira de forma simples.</p>
+            </header>
+
+            <!-- DASHBOARD CLIENTE -->
+            <section id="cli-dashboard" class="view-section active">
+                <div class="card">
+                    <h3>📊 Resumo do Mês</h3>
+                    <div class="resume-grid">
+                        <div class="resume-item receita">
+                            <span class="label">Receitas</span>
+                            <span class="value" id="totalReceitas">R$ 0,00</span>
+                        </div>
+                        <div class="resume-item despesa">
+                            <span class="label">Despesas</span>
+                            <span class="value" id="totalDespesas">R$ 0,00</span>
+                        </div>
+                        <div class="resume-item saldo">
+                            <span class="label">Saldo</span>
+                            <span class="value" id="saldo">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🎯 Análise Financeira</h3>
+                    <div class="bi-grid">
+                        <div class="bi-item">
+                            <span class="bi-label">Custo de Sobrevivência</span>
+                            <span class="bi-value" id="biSurvivalCost">R$ 0,00</span>
+                        </div>
+                        <div class="bi-item">
+                            <span class="bi-label">Estilo de Vida</span>
+                            <span class="bi-value" id="biLifestyleCost">R$ 0,00</span>
+                        </div>
+                        <div class="bi-item">
+                            <span class="bi-label">Renda Passiva</span>
+                            <span class="bi-value" id="biPassiveIncome">R$ 0,00</span>
+                        </div>
+                        <div class="bi-item">
+                            <span class="bi-label">Índice de Cobertura</span>
+                            <span class="bi-value" id="biCoverage">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TRANSAÇÕES CLIENTE -->
+            <section id="cli-transactions" class="view-section">
+                <div class="card">
+                    <h3>➕ Registar Transação</h3>
+                    <form onsubmit="handleAddTransaction(event)">
+                        <div class="form-group">
+                            <label>Categoria</label>
+                            <select id="transCategory" required>
+                                <option value="">Carregando categorias...</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Valor (R$)</label>
+                                <input type="number" id="transValue" placeholder="0,00" step="0.01" min="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Data</label>
+                                <input type="date" id="transDate" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Descrição (opcional)</label>
+                            <input type="text" id="transDescription" placeholder="Ex: Supermercado Extra">
+                        </div>
+                        <button type="submit" class="btn btn--primary">Registar</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3>📋 Histórico</h3>
+                    <div id="transactionHistoryList" class="transactions-list">
+                        <p class="empty-state">Nenhuma transação registada</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- METAS CLIENTE -->
+            <section id="cli-goals" class="view-section">
+                <div class="card">
+                    <h3>🎯 Minhas Metas</h3>
+                    <button onclick="toggleAddMetaForm()" class="btn btn--secondary" style="margin-bottom: 15px;">
+                        + Adicionar Meta
+                    </button>
+
+                    <div id="addMetaForm" class="hidden" style="padding: 20px; background: rgba(100, 150, 255, 0.08); border-radius: 10px; margin-bottom: 15px; border: 1px solid rgba(100, 150, 255, 0.2);">
+                        <form onsubmit="handleAddMeta(event)">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nome da Meta</label>
+                                    <input type="text" id="metaName" placeholder="Ex: Fundo de Emergência" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Valor Necessário (R$)</label>
+                                    <input type="number" id="metaValue" placeholder="0,00" step="0.01" min="0" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn--primary">Criar Meta</button>
+                        </form>
+                    </div>
+
+                    <div id="clientMetasList" class="metas-client-grid">
+                        <p class="empty-state">Nenhuma meta criada</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PLANEJAMENTO CLIENTE -->
+            <section id="cli-planning" class="view-section">
+                <div class="card">
+                    <h3>📊 Planejamento Personalizado</h3>
+                    <div id="clientPlanningList">
+                        <p class="empty-state">Aguardando planejamento do administrador...</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+</div><!-- /.app-container -->
+
+<!-- ============================================================
+     MODAIS
+============================================================ -->
+
+<!-- PERFIL ADMIN -->
+<div id="adminProfileModal" class="modal hidden">
+    <div class="modal__content">
+        <header class="modal__header">
+            <h2>👤 Perfil Admin</h2>
+            <button onclick="closeModal('adminProfileModal')" class="modal__close-btn">✕</button>
+        </header>
+        <div class="modal__body">
+            <p id="profileAdminEmail" style="color:#fff; font-size:18px; font-weight:600;"></p>
+            <button onclick="handleLogout()" class="btn btn--logout" style="width:100%; margin-top:20px;">Sair</button>
+        </div>
+    </div>
+</div>
+
+<!-- PERFIL CLIENTE -->
+<div id="clientProfileModal" class="modal hidden">
+    <div class="modal__content">
+        <header class="modal__header">
+            <h2>👤 Meu Perfil</h2>
+            <button onclick="closeModal('clientProfileModal')" class="modal__close-btn">✕</button>
+        </header>
+        <div class="modal__body">
+            <div style="background: rgba(100, 150, 255, 0.1); padding: 20px; border-radius: 8px;">
+                <p style="color:#a0a0b0; font-size:12px; margin-bottom:6px;">Nome</p>
+                <p id="profileClientName" style="color:#fff; font-size:18px; font-weight:700;"></p>
+                <p style="color:#a0a0b0; font-size:12px; margin:15px 0 6px;">Email</p>
+                <p id="profileClientEmail" style="color:#6495ff; font-size:14px;"></p>
+            </div>
+            <button onclick="handleLogout()" class="btn btn--logout" style="width:100%; margin-top:20px;">Sair</button>
+        </div>
+    </div>
+</div>
+
+<!-- EDITAR CLIENTE -->
+<div id="editClientModal" class="modal hidden">
+    <div class="modal__content">
+        <header class="modal__header">
+            <h2>✏️ Editar Cliente</h2>
+            <button onclick="closeModal('editClientModal')" class="modal__close-btn">✕</button>
+        </header>
+        <div class="modal__body">
+            <form id="editClientForm" onsubmit="handleEditClientSubmit(event)">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" name="nome" placeholder="Nome do cliente" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" placeholder="email@cliente.com">
+                </div>
+                <input type="hidden" name="clientId" value="">
+                <button type="submit" class="btn btn--primary">Salvar Alterações</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ANOTAÇÕES -->
+<div id="commentsModal" class="modal hidden">
+    <div class="modal__content">
+        <header class="modal__header">
+            <h2>📝 Anotações — <span id="commentsClientName" style="color:#6495ff;"></span></h2>
+            <button onclick="closeModal('commentsModal')" class="modal__close-btn">✕</button>
+        </header>
+        <div class="modal__body">
+            <form id="commentsForm" onsubmit="handleSaveComments(event)">
+                <div class="form-group">
+                    <label>Anotações Privadas (visível apenas para ti)</label>
+                    <textarea id="clientComments" rows="8"
+                        placeholder="Notas sobre este cliente..." style="resize: vertical;"></textarea>
+                </div>
+                <input type="hidden" id="commentsClientId" value="">
+                <button type="submit" class="btn btn--primary" style="width:100%; margin-top:10px;">Guardar Anotações</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     SCRIPTS — ORDEM CRÍTICA
+============================================================ -->
+<script src="config.js"></script>
+<script src="database.js"></script>
+<script src="auth.js"></script>
+<script src="ui.js"></script>
+<script src="dashboard.js"></script>
+<script src="transactions.js"></script>
+<script src="goals.js"></script>
+<script src="planning.js"></script>
+<script src="admin.js"></script>
+<script src="client.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
