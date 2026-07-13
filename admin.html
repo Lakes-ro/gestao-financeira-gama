@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestor Financeiro Pro — Admin</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body class="app-body">
+
+  <!-- ══ SIDEBAR ══════════════════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <div class="sidebar-brand">
+        <span class="sidebar-brand-name">MentorFin</span>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-section="clientes">
+          <span class="nav-icon">📋</span> Clientes
+        </button>
+        <button class="nav-item" data-section="plano-contas">
+          <span class="nav-icon">🗂️</span> Plano de Contas
+        </button>
+        <button class="nav-item" data-section="dashboards">
+          <span class="nav-icon">📊</span> Dashboards
+        </button>
+        <button class="nav-item" data-section="metas">
+          <span class="nav-icon">🎯</span> Metas
+        </button>
+        <button class="nav-item" data-section="planejamentos">
+          <span class="nav-icon">📋</span> Planejamentos
+        </button>
+        <button class="nav-item" data-section="razonete">
+          <span class="nav-icon">🧩</span> Razonete
+        </button>
+      </nav>
+    </div>
+
+    <div class="sidebar-bottom">
+      <button class="nav-item" data-section="perfil">
+        <span class="nav-icon">👤</span> Perfil
+      </button>
+      <button id="btn-sair" class="btn-sair">Sair</button>
+    </div>
+  </aside>
+
+  <!-- ══ CONTEÚDO PRINCIPAL ════════════════════════════════════ -->
+  <main class="main-content">
+
+    <header class="panel-header">
+      <div>
+        <h1 class="panel-title">👤 Painel do Administrador</h1>
+        <p class="panel-subtitle" id="admin-subtitle">Carregando...</p>
+      </div>
+    </header>
+
+    <!-- ── CLIENTES ─────────────────────────────────────────── -->
+    <section id="section-clientes" class="section active">
+      <div class="section-toolbar">
+        <h2 class="section-title">📋 Meus Clientes</h2>
+        <button class="btn-action" id="btn-add-cliente">+ Adicionar Cliente</button>
+      </div>
+      <div id="clientes-grid" class="cards-grid">
+        <p class="empty-state">Carregando clientes...</p>
+      </div>
+    </section>
+
+    <!-- ── PLANO DE CONTAS ──────────────────────────────────── -->
+    <section id="section-plano-contas" class="section">
+      <div class="section-toolbar">
+        <h2 class="section-title">🗂️ Plano de Contas</h2>
+        <button class="btn-action" id="btn-add-plano-conta">+ Adicionar Categoria</button>
+      </div>
+      <p class="panel-subtitle" style="margin-bottom:1rem;">
+        Estas são as categorias disponíveis para os clientes lançarem transações. Sem categorias aqui, o formulário de transação do cliente fica vazio.
+      </p>
+      <div id="plano-contas-grid" class="cards-grid">
+        <p class="empty-state">Carregando...</p>
+      </div>
+    </section>
+
+    <!-- ── DASHBOARDS ───────────────────────────────────────── -->
+    <section id="section-dashboards" class="section">
+      <div class="section-toolbar">
+        <h2 class="section-title">📊 Dashboards dos Clientes</h2>
+      </div>
+      <div id="dashboards-grid" class="cards-grid">
+        <p class="empty-state">Carregando...</p>
+      </div>
+    </section>
+
+    <!-- ── METAS ────────────────────────────────────────────── -->
+    <section id="section-metas" class="section">
+      <div class="section-toolbar">
+        <h2 class="section-title">🎯 Metas dos Clientes</h2>
+        <button class="btn-action" id="btn-add-meta">+ Adicionar Meta</button>
+      </div>
+      <div id="metas-grid" class="cards-grid">
+        <p class="empty-state">Nenhuma meta cadastrada.</p>
+      </div>
+    </section>
+
+    <!-- ── PLANEJAMENTOS ────────────────────────────────────── -->
+    <section id="section-planejamentos" class="section">
+      <div class="section-toolbar">
+        <h2 class="section-title">📋 Planejamentos</h2>
+        <button class="btn-action" id="btn-add-planejamento">+ Criar Planejamento</button>
+      </div>
+      <div id="planejamentos-list" class="planejamentos-list">
+        <p class="empty-state">Nenhum planejamento criado.</p>
+      </div>
+    </section>
+
+    <!-- ── RAZONETE ─────────────────────────────────────────── -->
+    <section id="section-razonete" class="section">
+      <div class="section-toolbar">
+        <h2 class="section-title">🧩 Razonete Consolidado</h2>
+      </div>
+      <div class="razonete-filters">
+        <div class="filter-group">
+          <label>Cliente:</label>
+          <select id="razonete-filter-cliente">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Tipo:</label>
+          <select id="razonete-filter-tipo">
+            <option value="">Todos</option>
+            <option value="receita">Receita</option>
+            <option value="despesa">Despesa</option>
+          </select>
+        </div>
+      </div>
+      <div id="razonete-list" class="razonete-list">
+        <p class="empty-state">Nenhuma transação encontrada.</p>
+      </div>
+    </section>
+
+    <!-- ── PERFIL ───────────────────────────────────────────── -->
+    <section id="section-perfil" class="section">
+      <div class="section-toolbar">
+        <h2 class="section-title">👤 Meu Perfil</h2>
+      </div>
+      <div class="perfil-card">
+        <div class="perfil-avatar">👤</div>
+        <div class="perfil-info">
+          <p class="perfil-nome"  id="perfil-nome">—</p>
+          <p class="perfil-email" id="perfil-email">—</p>
+          <span class="badge-role">Administrador</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══ MODAIS ════════════════════════════════════════════════ -->
+
+  <!-- Modal: Adicionar/Editar Cliente -->
+  <div id="modal-cliente" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-cliente-title">📋 Adicionar Cliente</h3>
+        <button class="modal-close" data-modal="modal-cliente">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="cliente-id" />
+        <div class="form-group">
+          <label>Nome completo</label>
+          <input type="text" id="cliente-nome" placeholder="Nome do cliente" />
+        </div>
+        <div class="form-group">
+          <label>E-mail</label>
+          <input type="email" id="cliente-email" placeholder="email@exemplo.com" />
+        </div>
+        <div class="form-group">
+          <label>CPF</label>
+          <input type="text" id="cliente-cpf" placeholder="000.000.000-00" maxlength="14" />
+        </div>
+        <div class="form-group">
+          <label>Telefone</label>
+          <input type="text" id="cliente-telefone" placeholder="(00) 00000-0000" maxlength="15" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-cliente">Cancelar</button>
+        <button class="btn-primary-sm" id="btn-salvar-cliente">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Adicionar/Editar Categoria (Plano de Contas) -->
+  <div id="modal-plano-conta" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-plano-conta-title">🗂️ Adicionar Categoria</h3>
+        <button class="modal-close" data-modal="modal-plano-conta">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="plano-conta-id" />
+        <div class="form-group">
+          <label>Nome da Categoria</label>
+          <input type="text" id="plano-conta-nome" placeholder="Ex: Supermercado" />
+        </div>
+        <div class="form-group">
+          <label>Tipo</label>
+          <select id="plano-conta-tipo">
+            <option value="despesa">Despesa</option>
+            <option value="receita">Receita</option>
+          </select>
+        </div>
+        <div class="form-group" id="grupo-tipo-renda">
+          <label>Tipo de Renda</label>
+          <select id="plano-conta-tipo-renda">
+            <option value="ativa">Ativa (trabalho)</option>
+            <option value="passiva">Passiva (investimentos)</option>
+          </select>
+        </div>
+        <div class="form-group" id="grupo-necessidade">
+          <label>Necessidade</label>
+          <select id="plano-conta-necessidade">
+            <option value="essencial">Essencial (sobrevivência)</option>
+            <option value="estilo_de_vida">Estilo de Vida</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Grupo (para relatórios)</label>
+          <input type="text" id="plano-conta-macro-grupo" placeholder="Ex: Alimentação, Moradia, Lazer..." />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-plano-conta">Cancelar</button>
+        <button class="btn-primary-sm" id="btn-salvar-plano-conta">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Dashboard do Cliente -->
+  <div id="modal-dashboard" class="modal-overlay hidden">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h3 id="modal-dashboard-title">📊 Dashboard</h3>
+        <button class="modal-close" data-modal="modal-dashboard">✕</button>
+      </div>
+      <div class="modal-body" id="modal-dashboard-body">
+        <div class="kpi-grid">
+          <div class="kpi-card kpi-orange">
+            <span class="kpi-label">🟠 Custo de Sobrevivência</span>
+            <span class="kpi-value" id="kpi-sobrevivencia">R$ 0,00</span>
+          </div>
+          <div class="kpi-card kpi-yellow">
+            <span class="kpi-label">🎯 Estilo de Vida</span>
+            <span class="kpi-value" id="kpi-estilo">R$ 0,00</span>
+          </div>
+          <div class="kpi-card kpi-green">
+            <span class="kpi-label">📈 Renda Passiva</span>
+            <span class="kpi-value" id="kpi-passiva">R$ 0,00</span>
+          </div>
+          <div class="kpi-card kpi-blue">
+            <span class="kpi-label">📌 Cobertura</span>
+            <span class="kpi-value" id="kpi-cobertura">0%</span>
+          </div>
+        </div>
+        <div class="charts-row">
+          <div class="chart-card">
+            <h4>📊 Essencial vs. Estilo de Vida</h4>
+            <div class="chart-container"><canvas id="chart-donut"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <h4>📊 Top Categorias de Despesa</h4>
+            <div class="chart-container"><canvas id="chart-bar"></canvas></div>
+          </div>
+        </div>
+        <div class="analise-section">
+          <h4>📊 ANÁLISE DETALHADA</h4>
+          <div class="analise-grid" id="analise-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Adicionar/Editar Meta -->
+  <div id="modal-meta" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-meta-title">🎯 Adicionar Meta</h3>
+        <button class="modal-close" data-modal="modal-meta">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="meta-id" />
+        <div class="form-group">
+          <label>Cliente</label>
+          <select id="meta-cliente-select"></select>
+        </div>
+        <div class="form-group">
+          <label>Título da Meta</label>
+          <input type="text" id="meta-titulo" placeholder="Ex: Fundo de Emergência" />
+        </div>
+        <div class="form-group">
+          <label>Valor Necessário (R$)</label>
+          <input type="number" id="meta-valor" placeholder="0,00" min="0" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label>Valor Economizado (R$)</label>
+          <input type="number" id="meta-economizado" placeholder="0,00" min="0" step="0.01" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-meta">Cancelar</button>
+        <button class="btn-primary-sm" id="btn-salvar-meta">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Criar/Editar Planejamento -->
+  <div id="modal-planejamento" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-planejamento-title">📋 Criar Planejamento</h3>
+        <button class="modal-close" data-modal="modal-planejamento">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="planejamento-id" />
+        <div class="planejamento-summary">
+          <div class="summary-item">
+            <span class="summary-label">Renda Ativa</span>
+            <span class="summary-value green" id="plan-renda-ativa">R$ 0,00</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Renda Passiva</span>
+            <span class="summary-value green" id="plan-renda-passiva">R$ 0,00</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Renda Total</span>
+            <span class="summary-value green" id="plan-renda-total">R$ 0,00</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Despesa Total</span>
+            <span class="summary-value red" id="plan-despesa-total">R$ 0,00</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Cliente</label>
+          <select id="planejamento-cliente-select"></select>
+        </div>
+        <div class="form-group">
+          <label>Título do Planejamento</label>
+          <input type="text" id="planejamento-titulo" placeholder="Planejamento mensal" />
+        </div>
+        <div class="form-group">
+          <label>Recomendações</label>
+          <textarea id="planejamento-recomendacoes" rows="5" placeholder="Com base na sua renda..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Detalhes Adicionais</label>
+          <textarea id="planejamento-detalhes" rows="4" placeholder="Nenhuma"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-planejamento">Cancelar</button>
+        <button class="btn-primary-sm" id="btn-salvar-planejamento">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Comentários do Cliente -->
+  <div id="modal-comentarios" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-comentarios-title">💬 Comentários</h3>
+        <button class="modal-close" data-modal="modal-comentarios">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="comentarios-list" class="comentarios-list"></div>
+        <div class="form-group" style="margin-top:1rem;">
+          <label>Novo comentário</label>
+          <textarea id="novo-comentario" rows="3" placeholder="Escreva um comentário sobre o cliente..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-comentarios">Fechar</button>
+        <button class="btn-primary-sm" id="btn-salvar-comentario">Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- ══ SCRIPTS — Ordem obrigatória, sem type="module" ════════
+       1. CDNs externos
+       2. config.js  → CONFIG + supabaseClient (globals)
+       3. admin.js   → currentAdmin, allClientes, helpers globais
+       4. Sub-módulos (usam globals definidos acima)
+  ══════════════════════════════════════════════════════════════ -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="config.js"></script>
+  <script src="admin.js"></script>
+  <script src="plano-de-contas.js"></script>
+  <script src="clientes.js"></script>
+  <script src="dashboards.js"></script>
+  <script src="metas.js"></script>
+  <script src="planejamentos.js"></script>
+  <script src="razonete.js"></script>
+
+</body>
+</html>
