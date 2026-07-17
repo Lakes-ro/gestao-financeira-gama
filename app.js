@@ -128,6 +128,16 @@ async function routeByRole(user, role) {
  * clientes.id). Idempotente: se a linha já existir, não faz nada.
  * Chamada em todo login (routeByRole), não só no cadastro/onboarding —
  * é isso que torna a correção autocurativa para contas já existentes.
+ *
+ * ATUALIZAÇÃO — RECONCILIAÇÃO DE DUPLICATAS: em vez de um INSERT
+ * direto, chama a função reconciliar_cliente_no_registro() (RPC no
+ * Supabase). Ela faz o INSERT da mesma forma, mas ANTES procura se já
+ * existe uma ficha "placeholder" com o mesmo email (criada manualmente
+ * pelo admin antes do cliente se registrar) — se achar, transfere
+ * qualquer transação/meta/planejamento já lançado nela para o id
+ * definitivo e apaga a ficha antiga, evitando o bug de "cliente
+ * duplicado" (confirmado em produção: o mesmo cliente chegou a
+ * aparecer 3 vezes em Meus Clientes).
  */
 async function garantirClienteExiste(user) {
     try {
@@ -148,18 +158,16 @@ async function garantirClienteExiste(user) {
             .eq('id', user.id)
             .maybeSingle();
 
-        const { error: insertError } = await supabaseClient
-            .from(CONFIG.TABLES.CLIENTES)
-            .insert([{
-                id:       user.id,
-                nome:     usuario?.nome_completo || usuario?.apelido || user.email?.split('@')[0] || 'Cliente',
-                email:    user.email,
-                admin_id: CONFIG.ADMIN.ID
-            }]);
+        const nome = usuario?.nome_completo || usuario?.apelido || user.email?.split('@')[0] || 'Cliente';
 
-        if (insertError) throw insertError;
+        const { error: rpcError } = await supabaseClient.rpc('reconciliar_cliente_no_registro', {
+            p_nome:  nome,
+            p_email: user.email
+        });
 
-        console.log('✅ garantirClienteExiste: linha em clientes criada retroativamente para', user.email);
+        if (rpcError) throw rpcError;
+
+        console.log('✅ garantirClienteExiste: linha em clientes criada/reconciliada retroativamente para', user.email);
     } catch (error) {
         // Não bloqueia o login se isso falhar — só regista o problema.
         // Se a causa for RLS (client_insert_self exige auth.uid() = id,
@@ -268,18 +276,15 @@ async function handleRegister(event) {
             created_at: new Date().toISOString()
         }]);
 
-        // 4. Insere na tabela clientes vinculado ao admin
-        const { data: jaExiste } = await supabaseClient
-            .from(CONFIG.TABLES.CLIENTES).select('id').eq('id', user.id).maybeSingle();
-
-        if (!jaExiste) {
-            await supabaseClient.from(CONFIG.TABLES.CLIENTES).insert([{
-                id:       user.id,
-                nome:     nome,
-                email:    email,
-                admin_id: CONFIG.ADMIN.ID
-            }]);
-        }
+        // 4. Cria/reconcilia a linha em `clientes` — a função RPC funde
+        //    automaticamente com qualquer ficha "placeholder" que o
+        //    admin já tenha criado manualmente com o mesmo email,
+        //    evitando cliente duplicado (ver garantirClienteExiste
+        //    para a explicação completa).
+        await supabaseClient.rpc('reconciliar_cliente_no_registro', {
+            p_nome:  nome,
+            p_email: email
+        });
 
         UIModule.showSuccess(`Conta criada! Bem-vindo, ${apelido}! Faz login agora.`);
         setTimeout(() => UIModule.showScreen('loginScreen'), 2000);
@@ -359,24 +364,22 @@ async function handleOnboarding(event) {
             if (insertError) throw insertError;
         }
 
-        // 3. Garante registo na tabela clientes vinculado ao admin
-        const { data: jaExisteCliente, error: selectClientError } = await supabaseClient
+        // 3. Garante/reconcilia registo na tabela clientes — a função RPC
+        //    funde automaticamente com qualquer ficha "placeholder" que
+        //    o admin já tenha criado manualmente com o mesmo email (ver
+        //    garantirClienteExiste para a explicação completa).
+        const { data: jaExisteCliente } = await supabaseClient
             .from(CONFIG.TABLES.CLIENTES)
             .select('id')
             .eq('id', user.id)
             .maybeSingle();
-        if (selectClientError) throw selectClientError;
 
         if (!jaExisteCliente) {
-            const { error: insertClientError } = await supabaseClient
-                .from(CONFIG.TABLES.CLIENTES)
-                .insert([{
-                    id:       user.id,
-                    nome:     nome,
-                    email:    user.email,
-                    admin_id: CONFIG.ADMIN.ID
-                }]);
-            if (insertClientError) throw insertClientError;
+            const { error: rpcError } = await supabaseClient.rpc('reconciliar_cliente_no_registro', {
+                p_nome:  nome,
+                p_email: user.email
+            });
+            if (rpcError) throw rpcError;
         }
 
         UIModule.showSuccess(`Bem-vindo, ${apelido}! 🎉`);
@@ -555,22 +558,100 @@ async function loadClientPlanning() {
         const plannings = await PlanningModule.loadClientPlannings(clientId);
 
         const container = document.getElementById('clientPlanningList');
-        if (!container) return;
-
-        if (!plannings || plannings.length === 0) {
-            container.innerHTML = '<p class="empty-state">Aguardando planejamento do administrador...</p>';
-            return;
+        if (container) {
+            if (!plannings || plannings.length === 0) {
+                container.innerHTML = '<p class="empty-state">Aguardando planejamento do administrador...</p>';
+            } else {
+                container.innerHTML = plannings.map(p => `
+                    <div class="card" style="margin-bottom: 15px;">
+                        <h3>${p.titulo}</h3>
+                        ${p.recomendacoes ? `<p style="color:#a0a0b0; margin-top:10px;">${p.recomendacoes}</p>` : ''}
+                        ${p.detalhes      ? `<p style="color:#6b7c8f; margin-top:8px; font-size:13px;">${p.detalhes}</p>` : ''}
+                    </div>
+                `).join('');
+            }
         }
 
-        container.innerHTML = plannings.map(p => `
-            <div class="card" style="margin-bottom: 15px;">
-                <h3>${p.titulo}</h3>
-                ${p.recomendacoes ? `<p style="color:#a0a0b0; margin-top:10px;">${p.recomendacoes}</p>` : ''}
-                ${p.detalhes      ? `<p style="color:#6b7c8f; margin-top:8px; font-size:13px;">${p.detalhes}</p>` : ''}
-            </div>
-        `).join('');
+        await atualizarAreaSolicitacaoPlanejamento(clientId);
     } catch (error) {
         console.error('Erro planning cliente:', error);
+    }
+}
+
+// ================================================
+// SOLICITAÇÃO DE PLANEJAMENTO (CLIENTE)
+// ================================================
+// Antes não existia NENHUMA forma do cliente avisar o admin que queria
+// um planejamento — a aba só mostrava uma mensagem passiva de espera.
+// Agora, se não houver planejamento nenhum ainda, aparece um botão
+// "Solicitar Planejamento"; se já houver uma solicitação pendente,
+// mostra isso em vez do botão (evita pedir duas vezes). O admin vê e
+// atende essas solicitações em admin.html (ver planejamentos.js).
+
+async function atualizarAreaSolicitacaoPlanejamento(clientId) {
+    const area = document.getElementById('clientPlanningRequestArea');
+    if (!area) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('solicitacoes_planejamento')
+            .select('id, created_at')
+            .eq('client_id', clientId)
+            .eq('status', 'pendente')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+            const dataFormatada = new Date(data.created_at).toLocaleDateString('pt-BR');
+            area.innerHTML = `
+                <div class="empty-state" style="padding:16px; font-style:normal; text-align:left; background:rgba(100,150,255,0.06); border-radius:10px; border:1px solid rgba(100,150,255,0.15); margin-bottom:15px;">
+                    📨 Você solicitou um planejamento em ${dataFormatada}. O administrador foi avisado e vai criar em breve.
+                </div>
+            `;
+        } else {
+            area.innerHTML = `
+                <button type="button" class="btn btn--secondary" onclick="abrirModalSolicitarPlanejamento()" style="margin-bottom:15px;">
+                    📩 Solicitar Planejamento
+                </button>
+            `;
+        }
+    } catch (err) {
+        console.error('❌ atualizarAreaSolicitacaoPlanejamento:', err.message);
+        area.innerHTML = '';
+    }
+}
+
+function abrirModalSolicitarPlanejamento() {
+    const campoMensagem = document.getElementById('solicitarPlanejamentoMensagem');
+    if (campoMensagem) campoMensagem.value = '';
+    UIModule.openModal('modalSolicitarPlanejamento');
+}
+
+async function handleEnviarSolicitacaoPlanejamento() {
+    const clientId = ClientModule.getClientId();
+    const mensagem = document.getElementById('solicitarPlanejamentoMensagem')?.value.trim() || '';
+
+    const btn = document.getElementById('btnEnviarSolicitacaoPlanejamento');
+    if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+
+    try {
+        const { error } = await supabaseClient
+            .from('solicitacoes_planejamento')
+            .insert({ client_id: clientId, mensagem: mensagem || null });
+
+        if (error) throw error;
+
+        UIModule.closeModal('modalSolicitarPlanejamento');
+        UIModule.showSuccess('Solicitação enviada! O administrador foi avisado.');
+        await loadClientPlanning();
+    } catch (err) {
+        console.error('❌ handleEnviarSolicitacaoPlanejamento:', err.message);
+        UIModule.showError(err.message || 'Erro ao enviar a solicitação.');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Enviar Solicitação'; }
     }
 }
 
@@ -900,6 +981,16 @@ async function handleAddTransaction(event) {
         // meta (só reaparece quando uma categoria de investimento for
         // escolhida de novo no próximo lançamento).
         atualizarSeletorDeMeta('transCategory', 'transMetaWrapper', 'transMeta');
+
+        // LOOP DE LANÇAMENTO RÁPIDO: depois de registar (seja clicando
+        // no botão, seja apertando Enter no campo Valor — Enter dentro
+        // de um <form> já dispara o submit por padrão do navegador),
+        // o foco volta sozinho para a Descrição. Isso permite lançar
+        // várias transações seguidas só pelo teclado: digita a
+        // descrição, Tab/clica a categoria sugerida, digita o valor,
+        // Enter — e já está pronto pra digitar a próxima descrição,
+        // sem precisar tocar no mouse a cada lançamento.
+        document.getElementById('transDescription')?.focus();
 
         UIModule.showSuccess('Transação registada!');
         await loadClientDashboard();
