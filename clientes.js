@@ -1,16 +1,3 @@
-/**
- * CLIENTES.JS — Módulo: Meus Clientes (admin.html)
- * Padrão: script global. Sem import/export.
- * Depende de: supabaseClient, currentAdmin, allClientes,
- *             loadAllClientes, openModal, closeModal,
- *             showToast (definidos em admin.js)
- *
- * ALTERAÇÃO: removido o link individual "http://.../index.html" +
- * botão "Copiar" do card de cada cliente (pedido explícito — a
- * autenticação já é feita via Supabase Auth, o link não tinha uso
- * prático e ocupava espaço no card).
- */
-
 let clienteEmEdicao     = null;
 let clienteComentarioId = null;
 
@@ -21,7 +8,6 @@ function initClientes() {
   document.getElementById('btn-salvar-cliente')
     ?.addEventListener('click', salvarCliente);
 
-  // Máscara CPF
   document.getElementById('cliente-cpf')?.addEventListener('input', (e) => {
     let v = e.target.value.replace(/\D/g, '').slice(0, 11);
     v = v.replace(/(\d{3})(\d)/, '$1.$2')
@@ -30,7 +16,6 @@ function initClientes() {
     e.target.value = v;
   });
 
-  // Máscara Telefone
   document.getElementById('cliente-telefone')?.addEventListener('input', (e) => {
     let v = e.target.value.replace(/\D/g, '').slice(0, 11);
     v = v.replace(/(\d{2})(\d)/, '($1) $2')
@@ -48,7 +33,6 @@ function initClientes() {
   renderClientes();
 }
 
-// ── Renderiza grid de clientes ────────────────────────────────
 async function renderClientes() {
   const grid = document.getElementById('clientes-grid');
   if (!grid) return;
@@ -97,7 +81,6 @@ async function renderClientes() {
   });
 }
 
-// ── Abre modal de cliente (add ou editar) ─────────────────────
 function abrirModalCliente(cliente) {
   clienteEmEdicao = cliente;
 
@@ -113,7 +96,6 @@ function abrirModalCliente(cliente) {
   openModal('modal-cliente');
 }
 
-// ── Salva cliente (insert ou update) ─────────────────────────
 async function salvarCliente() {
   const nome      = document.getElementById('cliente-nome').value.trim();
   const email     = document.getElementById('cliente-email').value.trim();
@@ -123,9 +105,33 @@ async function salvarCliente() {
 
   if (!nome) { showToast('Informe o nome do cliente.', 'error'); return; }
 
+  // ATUALIZAÇÃO — EMAIL OBRIGATÓRIO + AVISO DE DUPLICIDADE: o mesmo
+  // cliente já apareceu 3 VEZES na lista (cadastrado manualmente duas
+  // vezes, e uma terceira quando ele criou a própria conta). O email é
+  // a única forma confiável do sistema reconhecer "essa é a mesma
+  // pessoa" quando ela se registra depois — sem ele, a fusão automática
+  // (ver reconciliar_cliente_no_registro no banco) não tem como
+  // funcionar. Por isso agora é obrigatório, e avisamos ANTES de
+  // salvar se já existe alguém com esse email.
+  if (!email) {
+    showToast('Informe o email do cliente — sem ele, se a pessoa criar a própria conta depois, vai virar um cadastro duplicado.', 'error');
+    return;
+  }
+
+  const { data: existente } = await supabaseClient
+    .from('clientes')
+    .select('id, nome')
+    .ilike('email', email)
+    .maybeSingle();
+
+  if (existente && existente.id !== clienteId) {
+    showToast(`Já existe um cliente com esse email: "${existente.nome}". Edite aquele em vez de criar outro.`, 'error');
+    return;
+  }
+
   const payload = {
     nome,
-    email:    email    || null,
+    email,
     cpf:      cpf      || null,
     telefone: telefone || null,
     admin_id: currentAdmin.id,
@@ -149,7 +155,6 @@ async function salvarCliente() {
   renderClientes();
 }
 
-// ── Deletar cliente ───────────────────────────────────────────
 async function confirmarDeletar(id, nome) {
   if (!confirm(`Tem certeza que deseja deletar o cliente "${nome}"? Esta ação não pode ser desfeita.`)) return;
 
@@ -164,11 +169,6 @@ async function confirmarDeletar(id, nome) {
   renderClientes();
 }
 
-// ── Comentários ───────────────────────────────────────────────
-// NOTA: esta seção usa 'cliente_id' na tabela comentarios_clientes.
-// Não há, até agora, nenhuma evidência (erro 400) de que esta coluna
-// esteja errada — mas também não foi testada ainda. Se o botão
-// "💬 Comentários" der erro 400, me avise para eu corrigir.
 async function abrirModalComentarios(clienteId, nome) {
   clienteComentarioId = clienteId;
   document.getElementById('modal-comentarios-title').textContent = `💬 Comentários — ${nome}`;
@@ -184,9 +184,9 @@ async function carregarComentarios(clienteId) {
 
   const { data, error } = await supabaseClient
     .from('comentarios_clientes')
-    .select('texto, criado_em')
-    .eq('cliente_id', clienteId)
-    .order('criado_em', { ascending: false });
+    .select('texto, created_at')
+    .eq('client_id', clienteId)
+    .order('created_at', { ascending: false });
 
   if (error || !data?.length) {
     lista.innerHTML = '<p class="empty-state">Nenhum comentário ainda.</p>';
@@ -195,7 +195,7 @@ async function carregarComentarios(clienteId) {
 
   lista.innerHTML = data.map(c => `
     <div class="comentario-item">
-      <p class="comentario-data">${formatDataComentario(c.criado_em)}</p>
+      <p class="comentario-data">${formatDataComentario(c.created_at)}</p>
       <p class="comentario-texto">${c.texto}</p>
     </div>
   `).join('');
@@ -206,8 +206,8 @@ async function salvarComentario() {
   if (!texto) { showToast('Escreva um comentário antes de enviar.', 'error'); return; }
 
   const { error } = await supabaseClient.from('comentarios_clientes').insert({
-    cliente_id: clienteComentarioId,
-    admin_id:   currentAdmin.id,
+    client_id: clienteComentarioId,
+    admin_id:  currentAdmin.id,
     texto,
   });
 
@@ -218,8 +218,6 @@ async function salvarComentario() {
   await carregarComentarios(clienteComentarioId);
 }
 
-// Nome próprio (NÃO "formatDate") para não sobrescrever o
-// formatDate global de admin.js, que não inclui hora/minuto.
 function formatDataComentario(dateStr) {
   if (!dateStr) return '—';
   const d = new Date(dateStr);
