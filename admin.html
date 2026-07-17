@@ -18,8 +18,8 @@
         <button class="nav-item active" data-section="clientes">
           <span class="nav-icon">📋</span> Clientes
         </button>
-        <button class="nav-item" data-section="plano-contas">
-          <span class="nav-icon">🗂️</span> Plano de Contas
+        <button class="nav-item" data-section="categorias">
+          <span class="nav-icon">🗂️</span> Categorias
         </button>
         <button class="nav-item" data-section="dashboards">
           <span class="nav-icon">📊</span> Dashboards
@@ -65,16 +65,23 @@
       </div>
     </section>
 
-    <!-- ── PLANO DE CONTAS ──────────────────────────────────── -->
-    <section id="section-plano-contas" class="section">
+    <!-- ── CATEGORIAS ───────────────────────────────────────── -->
+    <!-- ATUALIZAÇÃO: substitui a antiga seção "Plano de Contas", que
+         usava a tabela legada plano_de_contas (nunca populada, RLS
+         nunca liberava leitura pro cliente) e um script (plano-de-
+         contas.js) que não existe mais no projeto — causava 404 no
+         console. A tabela correta é `categorias` (grupo: essencial |
+         estilo_de_vida | investimento | renda), gerida por
+         categorias.js. Ver cabeçalho de categorias.js para detalhes. -->
+    <section id="section-categorias" class="section">
       <div class="section-toolbar">
-        <h2 class="section-title">🗂️ Plano de Contas</h2>
-        <button class="btn-action" id="btn-add-plano-conta">+ Adicionar Categoria</button>
+        <h2 class="section-title">🗂️ Categorias</h2>
+        <button class="btn-action" id="btn-add-categoria">+ Adicionar Categoria</button>
       </div>
       <p class="panel-subtitle" style="margin-bottom:1rem;">
         Estas são as categorias disponíveis para os clientes lançarem transações. Sem categorias aqui, o formulário de transação do cliente fica vazio.
       </p>
-      <div id="plano-contas-grid" class="cards-grid">
+      <div id="categorias-grid" class="cards-grid">
         <p class="empty-state">Carregando...</p>
       </div>
     </section>
@@ -102,6 +109,18 @@
 
     <!-- ── PLANEJAMENTOS ────────────────────────────────────── -->
     <section id="section-planejamentos" class="section">
+      <!-- Solicitações pendentes: pedidos que os próprios clientes
+           enviaram (botão "Solicitar Planejamento" no painel deles —
+           ver app.js). "Criar Planejamento" abre o modal já com o
+           cliente certo selecionado; "Descartar" marca como atendida
+           sem criar nada (ex: pedido duplicado). -->
+      <div class="section-toolbar">
+        <h2 class="section-title">📩 Solicitações Pendentes</h2>
+      </div>
+      <div id="solicitacoes-planejamento-grid" class="cards-grid" style="margin-bottom:2.5rem;">
+        <p class="empty-state">Carregando...</p>
+      </div>
+
       <div class="section-toolbar">
         <h2 class="section-title">📋 Planejamentos</h2>
         <button class="btn-action" id="btn-add-planejamento">+ Criar Planejamento</button>
@@ -170,8 +189,8 @@
           <input type="text" id="cliente-nome" placeholder="Nome do cliente" />
         </div>
         <div class="form-group">
-          <label>E-mail</label>
-          <input type="email" id="cliente-email" placeholder="email@exemplo.com" />
+          <label>E-mail (obrigatório)</label>
+          <input type="email" id="cliente-email" placeholder="email@exemplo.com" required />
         </div>
         <div class="form-group">
           <label>CPF</label>
@@ -189,48 +208,38 @@
     </div>
   </div>
 
-  <!-- Modal: Adicionar/Editar Categoria (Plano de Contas) -->
-  <div id="modal-plano-conta" class="modal-overlay hidden">
+  <!-- Modal: Adicionar/Editar Categoria -->
+  <div id="modal-categoria" class="modal-overlay hidden">
     <div class="modal">
       <div class="modal-header">
-        <h3 id="modal-plano-conta-title">🗂️ Adicionar Categoria</h3>
-        <button class="modal-close" data-modal="modal-plano-conta">✕</button>
+        <h3 id="modal-categoria-title">🏷️ Adicionar Categoria</h3>
+        <button class="modal-close" data-modal="modal-categoria">✕</button>
       </div>
       <div class="modal-body">
-        <input type="hidden" id="plano-conta-id" />
+        <input type="hidden" id="categoria-id" />
         <div class="form-group">
           <label>Nome da Categoria</label>
-          <input type="text" id="plano-conta-nome" placeholder="Ex: Supermercado" />
+          <input type="text" id="categoria-nome" placeholder="Ex: Supermercado" />
         </div>
         <div class="form-group">
           <label>Tipo</label>
-          <select id="plano-conta-tipo">
+          <select id="categoria-tipo">
             <option value="despesa">Despesa</option>
             <option value="receita">Receita</option>
           </select>
         </div>
-        <div class="form-group" id="grupo-tipo-renda">
-          <label>Tipo de Renda</label>
-          <select id="plano-conta-tipo-renda">
-            <option value="ativa">Ativa (trabalho)</option>
-            <option value="passiva">Passiva (investimentos)</option>
-          </select>
-        </div>
-        <div class="form-group" id="grupo-necessidade">
-          <label>Necessidade</label>
-          <select id="plano-conta-necessidade">
-            <option value="essencial">Essencial (sobrevivência)</option>
-            <option value="estilo_de_vida">Estilo de Vida</option>
-          </select>
-        </div>
         <div class="form-group">
-          <label>Grupo (para relatórios)</label>
-          <input type="text" id="plano-conta-macro-grupo" placeholder="Ex: Alimentação, Moradia, Lazer..." />
+          <label>Grupo</label>
+          <!-- Opções preenchidas dinamicamente por atualizarOpcoesDeGrupo()
+               em categorias.js, conforme o Tipo escolhido acima
+               (despesa: essencial/estilo_de_vida/investimento;
+               receita: só renda) -->
+          <select id="categoria-grupo"></select>
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn-secondary" data-modal="modal-plano-conta">Cancelar</button>
-        <button class="btn-primary-sm" id="btn-salvar-plano-conta">Salvar</button>
+        <button class="btn-secondary" data-modal="modal-categoria">Cancelar</button>
+        <button class="btn-primary-sm" id="btn-salvar-categoria">Salvar</button>
       </div>
     </div>
   </div>
@@ -253,12 +262,12 @@
             <span class="kpi-value" id="kpi-estilo">R$ 0,00</span>
           </div>
           <div class="kpi-card kpi-green">
-            <span class="kpi-label">📈 Renda Passiva</span>
-            <span class="kpi-value" id="kpi-passiva">R$ 0,00</span>
+            <span class="kpi-label">💰 Investimentos</span>
+            <span class="kpi-value" id="kpi-investimentos">R$ 0,00</span>
           </div>
           <div class="kpi-card kpi-blue">
-            <span class="kpi-label">📌 Cobertura</span>
-            <span class="kpi-value" id="kpi-cobertura">0%</span>
+            <span class="kpi-label">📊 Taxa de Poupança</span>
+            <span class="kpi-value" id="kpi-poupanca">0%</span>
           </div>
         </div>
         <div class="charts-row">
@@ -397,7 +406,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="config.js"></script>
   <script src="admin.js"></script>
-  <script src="plano-de-contas.js"></script>
+  <script src="categorias.js"></script>
   <script src="clientes.js"></script>
   <script src="dashboards.js"></script>
   <script src="metas.js"></script>
